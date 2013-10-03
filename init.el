@@ -136,13 +136,14 @@
 
 ;;default packs
 (let* ((pack-names '("foundation-pack"
-                     "colour-pack"
+;                     "colour-pack"
                      "clojure-pack"
                      "lang-pack"
                      "power-pack"
                      "git-pack"
                      "org-pack"
-                     "bindings-pack"))
+                     "bindings-pack"
+                     "jw-pack"))
        (live-dir (file-name-as-directory "live"))
        (dev-dir  (file-name-as-directory "dev")))
   (setq live-packs (mapcar (lambda (p) (concat live-dir p)) pack-names) )
