@@ -13,3 +13,5 @@
 
 (live-load-config-file "thrift-conf.el")
 (live-load-config-file "themes.el")
+
+(global-hl-line-mode 1)
