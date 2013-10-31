@@ -15,3 +15,13 @@
 (live-load-config-file "themes.el")
 
 (global-hl-line-mode 1)
+
+;; cider
+
+(add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
+(add-hook 'cider-repl-mode-hook 'paredit-mode)
+
+(setq nrepl-hide-special-buffers t)
+(setq cider-repl-popup-stacktraces t)
+(setq nrepl-buffer-name-separator t)
+(setq cider-repl-display-in-current-window t)
