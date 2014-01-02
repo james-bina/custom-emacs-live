@@ -23,5 +23,4 @@
 
 (setq nrepl-hide-special-buffers t)
 (setq cider-repl-popup-stacktraces t)
-(setq nrepl-buffer-name-separator t)
 (setq cider-repl-display-in-current-window t)
