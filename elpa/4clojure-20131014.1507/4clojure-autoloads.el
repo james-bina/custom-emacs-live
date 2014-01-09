@@ -5,7 +5,7 @@
 
 ;;;### (autoloads (4clojure-check-answers 4clojure-previous-question
 ;;;;;;  4clojure-next-question 4clojure-open-question) "4clojure"
-;;;;;;  "4clojure.el" (21069 12193 0 0))
+;;;;;;  "4clojure.el" (21195 4063 0 0))
 ;;; Generated autoloads from 4clojure.el
 
 (autoload '4clojure-open-question "4clojure" "\
@@ -32,8 +32,8 @@ Sends the first answer to 4clojure and gets a message back
 
 ;;;***
 
-;;;### (autoloads nil nil ("4clojure-pkg.el") (21069 12193 846634
-;;;;;;  0))
+;;;### (autoloads nil nil ("4clojure-pkg.el") (21195 4063 516074
+;;;;;;  248000))
 
 ;;;***
 

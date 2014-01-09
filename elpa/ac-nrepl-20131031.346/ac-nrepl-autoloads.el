@@ -4,10 +4,8 @@
 
 
 ;;;### (autoloads (ac-nrepl-popup-doc ac-nrepl-setup) "ac-nrepl"
-;;;;;;  "ac-nrepl.el" (21069 12192 0 0))
+;;;;;;  "ac-nrepl.el" (21195 4127 0 0))
 ;;; Generated autoloads from ac-nrepl.el
-
-(add-hook 'nrepl-connected-hook 'ac-nrepl-refresh-class-cache t)
 
 (defface ac-nrepl-candidate-face '((t (:inherit ac-candidate-face))) "\
 Face for nrepl candidates." :group (quote auto-complete))
@@ -49,8 +47,8 @@ A popup alternative to `nrepl-doc'.
 
 ;;;***
 
-;;;### (autoloads nil nil ("ac-nrepl-pkg.el") (21069 12192 674203
-;;;;;;  0))
+;;;### (autoloads nil nil ("ac-nrepl-pkg.el") (21195 4127 375247
+;;;;;;  866000))
 
 ;;;***
 

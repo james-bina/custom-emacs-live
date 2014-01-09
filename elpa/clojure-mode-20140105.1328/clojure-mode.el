@@ -2,12 +2,12 @@
 
 ;; Copyright © 2007-2013 Jeffrey Chu, Lennart Staflin, Phil Hagelberg
 ;;
-;; Authors: Jeffrey Chu <jochu0@gmail.com>
-;;          Lennart Staflin <lenst@lysator.liu.se>
-;;          Phil Hagelberg <technomancy@gmail.com>
+;; Author: Jeffrey Chu <jochu0@gmail.com>
+;;         Lennart Staflin <lenst@lysator.liu.se>
+;;         Phil Hagelberg <technomancy@gmail.com>
 ;; URL: http://github.com/clojure-emacs/clojure-mode
-;; Version: 20130923.2238
-;; X-Original-Version: 2.1.0
+;; Version: 20140105.1328
+;; X-Original-Version: 2.1.1
 ;; Keywords: languages, lisp
 
 ;; This file is not part of GNU Emacs.
@@ -28,7 +28,7 @@
 ;;   ;; require or autoload paredit-mode
 ;;   (add-hook 'clojure-mode-hook 'paredit-mode)
 
-;; See nREPL.el (http://github.com/clojure-emacs/nrepl.el) for
+;; See CIDER (http://github.com/clojure-emacs/cider) for
 ;; better interaction with subprocesses via nREPL.
 
 ;;; License:
@@ -101,7 +101,7 @@
        (1 font-lock-keyword-face)
        (2 font-lock-function-name-face nil t))
 
-      (,(concat "(\\(\\(?:[a-z\.-]+/\\)?def\[a-z\]*-?\\)"
+      (,(concat "(\\(\\(?:[a-z\.-]+/\\)?def\[a-z\-\]*-?\\)"
                 ;; Function declarations.
                 "\\>"
                 ;; Any whitespace
@@ -242,7 +242,8 @@
         "var?" "vary-meta" "vec" "vector" "vector?"
         "when" "when-first" "when-let" "when-not" "while"
         "with-bindings" "with-bindings*" "with-in-str" "with-loading-context" "with-local-vars"
-        "with-meta" "with-open" "with-out-str" "with-precision" "xml-seq" "zipmap"
+        "with-meta" "with-open" "with-out-str" "with-precision"
+        "with-redefs" "with-redefs-fn" "xml-seq" "zero?" "zipmap"
         ) t)
          "\\>")
        1 font-lock-builtin-face)
@@ -285,19 +286,20 @@
         "rightmost" "rights" "root" "seq-zip" "up"
         ) t)
          "\\>")
-       1 font-lock-type-face)
+       1 font-lock-builtin-face)
       ;; Constant values (keywords), including as metadata e.g. ^:static
       ("\\<^?:\\(\\sw\\|\\s_\\)+\\(\\>\\|\\_>\\)" 0 font-lock-constant-face)
-      ;; Meta type annotation #^Type or ^Type
-      ("#?^\\(\\sw\\|\\s_\\)+" 0 font-lock-preprocessor-face)
-      ("\\<io\\!\\>" 0 font-lock-warning-face)
+      ;; Meta type hint #^Type or ^Type
+      ("\\(#?^\\)\\(\\(\\sw\\|\\s_\\)+\\)"
+       (1 font-lock-preprocessor-face)
+       (2 font-lock-type-face))
 
       ;;Java interop highlighting
       ("\\<\\.-?[a-z][a-zA-Z0-9]*\\>" 0 font-lock-preprocessor-face) ;; .foo .barBaz .qux01 .-flibble .-flibbleWobble
       ("\\<[A-Z][a-zA-Z0-9_]*[a-zA-Z0-9/$_]+\\>" 0 font-lock-preprocessor-face) ;; Foo Bar$Baz Qux_ World_OpenUDP
       ("\\<[a-zA-Z]+\\.[a-zA-Z0-9._]*[A-Z]+[a-zA-Z0-9/.$]*\\>" 0 font-lock-preprocessor-face) ;; Foo/Bar foo.bar.Baz foo.Bar/baz
       ("[a-z]*[A-Z]+[a-z][a-zA-Z0-9$]*\\>" 0 font-lock-preprocessor-face) ;; fooBar
-      ("\\<[A-Z][a-zA-Z0-9$]*\\.\\>" 0 font-lock-preprocessor-face) ;; Foo. BarBaz. Qux$Quux. Corge9.
+      ("\\<[A-Z][a-zA-Z0-9$]*\\.\\>" 0 font-lock-type-face) ;; Foo. BarBaz. Qux$Quux. Corge9.
       ;; Highlight grouping constructs in regular expressions
       (clojure-mode-font-lock-regexp-groups
        (1 'font-lock-regexp-grouping-construct prepend))))
@@ -333,6 +335,13 @@ Clojure to load that file."
   :group 'clojure
   :safe 'stringp)
 
+(defcustom clojure-defun-style-default-indent nil
+  "Default indenting of function and macro forms using defun rules unless
+otherwise defined via `put-clojure-indent`, `define-clojure-indent`, etc."
+  :type 'boolean
+  :group 'clojure
+  :safe 'booleanp)
+
 (defcustom clojure-use-backtracking-indent t
   "Set to non-nil to enable backtracking/context sensitive indentation."
   :type 'boolean
@@ -356,7 +365,7 @@ in :db/id[:db.part/user]"
   :group 'clojure
   :safe (lambda (value)
           (and (listp value)
-               (every characterp value))))
+               (every 'characterp value))))
 
 (defvar clojure-mode-map
   (let ((map (make-sparse-keymap)))
@@ -430,7 +439,8 @@ numbers count from the end:
   (if (fboundp 'prog-mode) 'prog-mode 'fundamental-mode))
 
 (defun clojure-space-for-delimiter-p (endp delim)
-  (if (eq major-mode 'clojure-mode)
+  "Prevent paredit from inserting unneeded spaces."
+  (if (derived-mode-p 'clojure-mode)
       (save-excursion
         (backward-char)
         (if (and (or (char-equal delim ?\()
@@ -489,6 +499,7 @@ if that value is non-nil."
   (setq-local parse-sexp-ignore-comments t)
 
   (clojure-mode-font-lock-setup)
+  (setq-local open-paren-in-column-0-is-defun-start nil)
   (add-hook 'paredit-mode-hook
             (lambda ()
               (when (>= paredit-version 21)
@@ -521,15 +532,26 @@ if that value is non-nil."
 
 
 (defun clojure-match-next-def ()
-  "Scans the buffer backwards for the next top level definition.
+  "Scans the buffer backwards for the next top-level definition.
 Called by `imenu--generic-function'."
-  (when (re-search-backward "^\\s *(def\\S *[ \n\t]+" nil t)
+  (when (re-search-backward "^(def\sw*" nil t)
     (save-excursion
-      (goto-char (match-end 0))
-      (when (looking-at "#?\\^")
-        (let (forward-sexp-function) ; using the built-in one
-          (forward-sexp)))           ; skip the metadata
-      (re-search-forward "[^ \n\t)]+"))))
+      (let (found?
+            (start (point)))
+        (down-list)
+        (forward-sexp)
+        (while (not found?)
+          (forward-sexp)
+          (or (if (char-equal ?[ (char-after (point)))
+                              (backward-sexp))
+                  (if (char-equal ?) (char-after (point)))
+                (backward-sexp)))
+          (destructuring-bind (def-beg . def-end) (bounds-of-thing-at-point 'sexp)
+            (if (char-equal ?^ (char-after def-beg))
+                (progn (forward-sexp) (backward-sexp))
+              (setq found? t)
+              (set-match-data (list def-beg def-end)))))
+        (goto-char start)))))
 
 (defun clojure-mode-font-lock-setup ()
   "Configures font-lock for editing Clojure code."
@@ -762,6 +784,10 @@ This function also returns nil meaning don't specify the indentation."
                (goto-char open-paren)
                (1+ (current-column)))
               ((or (eq method 'defun)
+                   (and clojure-defun-style-default-indent
+                        ;; largely to preserve useful alignment of :require, etc in ns
+                        (not (string-match "^:" function))
+                        (not method))
                    (and (null method)
                         (> (length function) 3)
                         (string-match "\\`\\(?:\\S +/\\)?\\(def\\|with-\\)"
@@ -1142,7 +1168,7 @@ Useful if a file has been renamed."
         (when (re-search-forward regexp nil t)
           (match-string-no-properties 4))))))
 
-(defalias 'clojure-find-package 'clojure-find-ns)
+(define-obsolete-function-alias 'clojure-find-package 'clojure-find-ns)
 
 ;; Test navigation:
 (defun clojure-in-tests-p ()
@@ -1174,6 +1200,9 @@ word test in it and whether the file lives under the test/ directory."
   (interactive)
   (find-file (funcall clojure-test-for-fn (clojure-find-ns))))
 
+(make-obsolete 'clojure-jump-to-test
+               "use projectile or toggle.el instead." "2.1.1")
+
 (defun clojure-jump-between-tests-and-code ()
   "Jump between implementation and related test file."
   (interactive)
@@ -1183,8 +1212,7 @@ word test in it and whether the file lives under the test/ directory."
 
 ;;;###autoload
 (progn
-  (add-to-list 'auto-mode-alist '("\\.clj\\'" . clojure-mode))
-  (add-to-list 'auto-mode-alist '("\\.cljs\\'" . clojure-mode))
+  (add-to-list 'auto-mode-alist '("\\.clj[sx]?\\'" . clojure-mode))
   (add-to-list 'auto-mode-alist '("\\.dtm\\'" . clojure-mode))
   (add-to-list 'auto-mode-alist '("\\.edn\\'" . clojure-mode))
   (add-to-list 'interpreter-mode-alist '("jark" . clojure-mode))
