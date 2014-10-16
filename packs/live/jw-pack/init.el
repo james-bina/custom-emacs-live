@@ -16,11 +16,11 @@
 
 (global-hl-line-mode 1)
 
-;; cider
+;; midje
+(add-hook 'clojure-mode-hook 'midje-mode)
 
+;; cider
 (add-hook 'cider-mode-hook 'cider-turn-on-eldoc-mode)
 (add-hook 'cider-repl-mode-hook 'paredit-mode)
-
-;(setq nrepl-hide-special-buffers t)
 (setq cider-repl-popup-stacktraces t)
 (setq cider-repl-display-in-current-window t)
